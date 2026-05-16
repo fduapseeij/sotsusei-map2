@@ -1,0 +1,1 @@
+if('serviceWorker' in navigator) {window.addEventListener('load', () => {navigator.serviceWorker.register('/sotsusei-map2/sw.js', { scope: '/sotsusei-map2/' })})}
