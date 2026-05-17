@@ -8,6 +8,11 @@ import {
 import { useState, useEffect } from "react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import {
+  savePhoto,
+  getPhoto,
+  deletePhoto,
+} from "./db";
 
 // --------------------
 // ピン画像修正（Reactで必要）
@@ -53,10 +58,13 @@ function AddMarker({ markers, setMarkers, category }) {
   useMapEvents({
     click(e) {
       const newMarker = {
+        id: crypto.randomUUID(),
+
         lat: e.latlng.lat,
         lng: e.latlng.lng,
         category,
         memo: "",
+        photos: [],
       };
 
       setMarkers([...markers, newMarker]);
@@ -87,6 +95,42 @@ export default function App() {
       JSON.stringify(markers)
     );
   }, [markers]);
+
+  useEffect(() => {
+    const loadPhotos =
+      async () => {
+        const updated =
+          await Promise.all(
+            markers.map(
+              async (
+                marker,
+                index
+              ) => {
+                const file =
+                  await getPhoto(
+                    `photo-${marker.id}`
+                  );
+
+                if (!file)
+                  return marker;
+
+                return {
+                  ...marker,
+                  photos: [
+                    URL.createObjectURL(
+                      file
+                    ),
+                  ],
+                };
+              }
+            )
+          );
+
+        setMarkers(updated);
+      };
+
+    loadPhotos();
+  }, []);
 
   // --------------------
   // カテゴリ
@@ -119,6 +163,57 @@ export default function App() {
     updated[index] = {
       ...updated[index],
       memo: newMemo,
+    };
+
+    setMarkers(updated);
+  };
+
+  // 写真更新
+  const updatePhoto = async (
+    index,
+    file
+  ) => {
+    if (!file) return;
+
+    const key =
+      `photo-${markers[index].id}`;
+
+    // IndexedDB保存
+    await savePhoto(
+      key,
+      file
+    );
+
+    // 表示用URL
+    const imageUrl =
+      URL.createObjectURL(file);
+
+    const updated = [...markers];
+
+    updated[index] = {
+      ...updated[index],
+      photos: [imageUrl],
+    };
+
+    setMarkers(updated);
+  };
+
+  // 写真削除
+  const removePhoto = async (
+    index
+  ) => {
+    const key =
+      `photo-${markers[index].id}`;
+
+    await deletePhoto(
+      key
+    );
+
+    const updated = [...markers];
+
+    updated[index] = {
+      ...updated[index],
+      photos: [],
     };
 
     setMarkers(updated);
@@ -293,6 +388,50 @@ export default function App() {
               {marker.lng.toFixed(5)}
 
               <br />
+              <br />
+
+              写真
+              <br />
+
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                onChange={(e) =>
+                  updatePhoto(
+                    index,
+                    e.target.files?.[0]
+                  )
+                }
+              />
+
+              <br />
+              <br />
+
+              {marker.photos?.[0] && (
+                <>
+                  <img
+                    src={marker.photos[0]}
+                    alt="現地写真"
+                    style={{
+                      width: "100%",
+                      borderRadius: "8px",
+                      marginTop: "8px",
+                    }}
+                  />
+
+                  <br />
+
+                  <button
+                    onClick={() =>
+                      removePhoto(index)
+                    }
+                  >
+                    写真削除
+                  </button>
+                </>
+              )}
+
               <br />
 
               メモ
