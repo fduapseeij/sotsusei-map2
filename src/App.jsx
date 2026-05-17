@@ -27,22 +27,22 @@ L.Icon.Default.mergeOptions({
 // 色付きアイコン
 // --------------------
 const redIcon = new L.Icon({
-  iconUrl: "/icon/marker-red.png",
-  shadowUrl: "/icons/marker-shadow.png",
+  iconUrl: "public/icon/marker-icon-red.png",
+  shadowUrl: "public/icon/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
 
 const blueIcon = new L.Icon({
-  iconUrl: "/icons/marker-green.png",
-  shadowUrl: "/icons/marker-shadow.png",
+  iconUrl: "public/icon/marker-icon-blue.png",
+  shadowUrl: "public/icon/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
 
 const greenIcon = new L.Icon({
-  iconUrl: "/icon/marker-blue.png",
-  shadowUrl: "/icon/marker-shadow.png",
+  iconUrl: "public/icon/marker-icon-green.png",
+  shadowUrl: "public/icon/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
