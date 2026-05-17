@@ -14,32 +14,34 @@ import "leaflet/dist/leaflet.css";
 // --------------------
 delete L.Icon.Default.prototype._getIconUrl;
 
+const BASE = import.meta.env.BASE_URL;
+
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl: "public/icon/marker-icon-2x.png",
-  iconUrl: "public/icon/marker-icon.png",
-  shadowUrl: "public/icon/marker-shadow.png",
+  iconRetinaUrl: BASE + "icon/marker-icon-2x.png",
+  iconUrl: BASE + "icon/marker-icon.png",
+  shadowUrl: BASE + "icon/marker-shadow.png",
 });
 
 // --------------------
 // 色付きアイコン
 // --------------------
 const redIcon = new L.Icon({
-  iconUrl: "public/icon/marker-icon-red.png",
-  shadowUrl: "public/icon/marker-shadow.png",
+  iconUrl: BASE + "icon/marker-icon-red.png",
+  shadowUrl: BASE + "icon/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
 
 const blueIcon = new L.Icon({
-  iconUrl: "public/icon/marker-icon-blue.png",
-  shadowUrl: "public/icon/marker-shadow.png",
+  iconUrl: BASE + "icon/marker-icon-blue.png",
+  shadowUrl: BASE + "icon/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
 
 const greenIcon = new L.Icon({
-  iconUrl: "public/icon/marker-icon-green.png",
-  shadowUrl: "public/icon/marker-shadow.png",
+  iconUrl: BASE + "icon/marker-icon-green.png",
+  shadowUrl: BASE + "icon/marker-shadow.png",
   iconSize: [25, 41],
   iconAnchor: [12, 41],
 });
