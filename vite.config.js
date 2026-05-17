@@ -9,6 +9,7 @@ export default defineConfig({
 
     VitePWA({
       registerType: "autoUpdate",
+      injectRegister: "auto",
 
       includeAssets: [
         "icon-192.jpg",
@@ -16,6 +17,10 @@ export default defineConfig({
       ],
 
       workbox: {
+        cleanupOutdatedCaches: true,
+        skipWaiting: true,
+        clientsClaim: true,
+        
         globPatterns: [
           "**/*.{js,css,html,png,jpg,jpeg,svg,ico,json}"
         ],
@@ -34,7 +39,7 @@ export default defineConfig({
               expiration: {
                 maxEntries: 5000,
                 maxAgeSeconds:
-                  60 * 60 * 24 * 30,
+                  60 * 60 * 24 * 30, //キャッシュ一カ月保持
               },
 
               cacheableResponse: {
@@ -58,8 +63,8 @@ export default defineConfig({
 
         display: "standalone",
 
-        start_url: ".",
-        scope: ".",
+        start_url: "/sotsusei-map2/",
+        scope: "/sotsusei-map2/",
 
         icons: [
           {
@@ -77,7 +82,7 @@ export default defineConfig({
       },
 
       devOptions: {
-        enabled: true,
+        enabled: false,
       },
     }),
   ],
