@@ -54,20 +54,32 @@ const greenIcon = new L.Icon({
 // --------------------
 // 地図クリックでピン追加
 // --------------------
-function AddMarker({ markers, setMarkers, category }) {
+function AddMarker({
+  markers,
+  setMarkers,
+  category,
+  moveMode,
+}) {
   useMapEvents({
     click(e) {
+      // 移動モード中は追加しない
+      if (moveMode) return;
+
       const newMarker = {
-        id: crypto.randomUUID(),
+        id: Date.now() + Math.random(),
 
         lat: e.latlng.lat,
         lng: e.latlng.lng,
+
         category,
         memo: "",
         photos: [],
       };
 
-      setMarkers([...markers, newMarker]);
+      setMarkers((prev) => [
+        ...prev,
+        newMarker,
+      ]);
     },
   });
 
@@ -96,47 +108,18 @@ export default function App() {
     );
   }, [markers]);
 
-  useEffect(() => {
-    const loadPhotos =
-      async () => {
-        const updated =
-          await Promise.all(
-            markers.map(
-              async (
-                marker,
-                index
-              ) => {
-                const file =
-                  await getPhoto(
-                    `photo-${marker.id}`
-                  );
-
-                if (!file)
-                  return marker;
-
-                return {
-                  ...marker,
-                  photos: [
-                    URL.createObjectURL(
-                      file
-                    ),
-                  ],
-                };
-              }
-            )
-          );
-
-        setMarkers(updated);
-      };
-
-    loadPhotos();
-  }, []);
 
   // --------------------
   // カテゴリ
   // --------------------
   const [category, setCategory] =
     useState("空き家");
+
+  // --------------------
+  // 移動モード
+  // --------------------
+  const [moveMode, setMoveMode] =
+    useState(false);
 
   const iconMap = {
     空き家: redIcon,
@@ -150,6 +133,42 @@ export default function App() {
   const removeMarker = (index) => {
     const updated = [...markers];
     updated.splice(index, 1);
+    setMarkers(updated);
+  };
+
+  // カテゴリ変更
+  const updateCategory = (
+    index,
+    newCategory
+  ) => {
+    const updated = [
+      ...markers,
+    ];
+
+    updated[index] = {
+      ...updated[index],
+      category:
+        newCategory,
+    };
+
+    setMarkers(updated);
+  };
+
+  // ピン移動
+  const updateMarkerPosition = (
+    index,
+    newLatLng
+  ) => {
+    const updated = [
+      ...markers,
+    ];
+
+    updated[index] = {
+      ...updated[index],
+      lat: newLatLng.lat,
+      lng: newLatLng.lng,
+    };
+
     setMarkers(updated);
   };
 
@@ -168,81 +187,264 @@ export default function App() {
     setMarkers(updated);
   };
 
-  // 写真更新
+  // 写真更新（複数）
   const updatePhoto = async (
     index,
-    file
+    files
   ) => {
-    if (!file) return;
+    if (
+      !files ||
+      files.length === 0
+    )
+      return;
 
-    const key =
-      `photo-${markers[index].id}`;
+    const updated = [
+      ...markers,
+    ];
 
-    // IndexedDB保存
-    await savePhoto(
-      key,
-      file
-    );
+    const currentPhotos =
+      updated[index]
+        .photos || [];
 
-    // 表示用URL
-    const imageUrl =
-      URL.createObjectURL(file);
+    const newPhotos = [];
 
-    const updated = [...markers];
+    for (
+      let i = 0;
+      i < files.length;
+      i++
+    ) {
+      const file =
+        files[i];
+
+      const key =
+        `photo-${
+          markers[index].id
+        }-${Date.now()}-${i}`;
+
+      await savePhoto(
+        key,
+        file
+      );
+
+      newPhotos.push({
+        key,
+        preview:
+          URL.createObjectURL(
+            file
+          ),
+      });
+    }
 
     updated[index] = {
       ...updated[index],
-      photos: [imageUrl],
+      photos: [
+        ...currentPhotos,
+        ...newPhotos,
+      ],
     };
 
     setMarkers(updated);
   };
 
   // 写真削除
-  const removePhoto = async (
-    index
-  ) => {
-    const key =
-      `photo-${markers[index].id}`;
+  const removePhoto =
+    async (
+      index,
+      photoIndex
+    ) => {
+      const updated = [
+        ...markers,
+      ];
 
-    await deletePhoto(
-      key
-    );
+      const targetPhoto =
+        updated[index]
+          .photos[
+          photoIndex
+        ];
 
-    const updated = [...markers];
+      await deletePhoto(
+        targetPhoto.key
+      );
 
-    updated[index] = {
-      ...updated[index],
-      photos: [],
+      updated[
+        index
+      ].photos =
+        updated[
+          index
+        ].photos.filter(
+          (_, i) =>
+            i !== photoIndex
+        );
+
+      setMarkers(updated);
     };
+  
+  // --------------------
+  // 画像圧縮
+  // --------------------
+  const compressImage = (
+    file,
+    maxWidth = 1200,
+    quality = 0.7
+  ) => {
+    return new Promise(
+      (resolve) => {
+        const img =
+          new Image();
 
-    setMarkers(updated);
+        const reader =
+          new FileReader();
+
+        reader.onload =
+          (e) => {
+            img.src =
+              e.target.result;
+          };
+
+        img.onload = () => {
+          const canvas =
+            document.createElement(
+              "canvas"
+            );
+
+          let width =
+            img.width;
+
+          let height =
+            img.height;
+
+          // 横幅制限
+          if (
+            width >
+            maxWidth
+          ) {
+            height =
+              height *
+              (
+                maxWidth /
+                width
+              );
+
+            width =
+              maxWidth;
+          }
+
+          canvas.width =
+            width;
+
+          canvas.height =
+            height;
+
+          const ctx =
+            canvas.getContext(
+              "2d"
+            );
+
+          ctx.drawImage(
+            img,
+            0,
+            0,
+            width,
+            height
+          );
+
+          resolve(
+            canvas.toDataURL(
+              "image/jpeg",
+              quality
+            )
+          );
+        };
+
+        reader.readAsDataURL(
+          file
+        );
+      }
+    );
   };
 
   // --------------------
   // JSON保存
   // --------------------
-  const exportJSON = () => {
-    const jsonData = JSON.stringify(
-      markers,
-      null,
-      2
-    );
+  const exportJSON =
+    async () => {
+      const markersWithPhotos =
+        await Promise.all(
+          markers.map(
+            async (
+              marker
+            ) => {
+              const photos =
+                [];
 
-    const blob = new Blob([jsonData], {
-      type: "application/json",
-    });
+              for (
+                const photo of marker.photos ||
+                []
+              ) {
+                const file =
+                  await getPhoto(
+                    photo.key
+                  );
 
-    const url =
-      URL.createObjectURL(blob);
+                if (
+                  file
+                ) {
+                  const compressed =
+                    await compressImage(
+                      file
+                    );
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "field-survey.json";
-    a.click();
+                  photos.push(
+                    compressed
+                  );
+                }
+              }
 
-    URL.revokeObjectURL(url);
-  };
+              return {
+                ...marker,
+                exportPhotos:
+                  photos,
+              };
+            }
+          )
+        );
+
+      const jsonData =
+        JSON.stringify(
+          markersWithPhotos,
+          null,
+          2
+        );
+
+      const blob =
+        new Blob(
+          [jsonData],
+          {
+            type:
+              "application/json",
+          }
+        );
+
+      const url =
+        URL.createObjectURL(
+          blob
+        );
+
+      const a =
+        document.createElement(
+          "a"
+        );
+
+      a.href = url;
+      a.download =
+        "field-survey.json";
+
+      a.click();
+
+      URL.revokeObjectURL(
+        url
+      );
+    };
 
   // --------------------
   // JSON読み込み
@@ -263,15 +465,114 @@ export default function App() {
           "OK：現在の作業を消して読み込む\n\nキャンセル：現在の作業に追加"
         );
 
+        const restorePhotos =
+          async (
+            imported
+          ) => {
+            const restored =
+              await Promise.all(
+                imported.map(
+                  async (
+                    marker
+                  ) => {
+                    // exportPhotosがない
+                    if (
+                      !marker.exportPhotos
+                    ) {
+                      return marker;
+                    }
+
+                    const photoUrls =
+                      [];
+
+                    for (
+                      let i = 0;
+                      i <
+                      marker
+                        .exportPhotos
+                        .length;
+                      i++
+                    ) {
+                      const base64 =
+                        marker
+                          .exportPhotos[
+                          i
+                        ];
+
+                      const response =
+                        await fetch(
+                          base64
+                        );
+
+                      const blob =
+                        await response.blob();
+
+                      const file =
+                        new File(
+                          [blob],
+                          `photo-${i}.jpg`,
+                          {
+                            type:
+                              "image/jpeg",
+                          }
+                        );
+
+                      const key =
+                        `photo-${marker.id}-${Date.now()}-${i}`;
+
+                      await savePhoto(
+                        key,
+                        file
+                      );
+
+                      photoUrls.push({
+                        key,
+                        url:
+                          URL.createObjectURL(
+                            file
+                          ),
+                      });
+                    }
+
+                    return {
+                      ...marker,
+                      photos:
+                        photoUrls,
+                    };
+                  }
+                )
+              );
+
+            return restored;
+          };
+
         if (shouldReplace) {
-          // 上書き
-          setMarkers(importedMarkers);
+          restorePhotos(
+            importedMarkers
+          ).then(
+            (
+              restoredMarkers
+            ) => {
+              setMarkers(
+                restoredMarkers
+              );
+            }
+          );
         } else {
-          // 追加
-          setMarkers((prev) => [
-            ...prev,
-            ...importedMarkers,
-          ]);
+          restorePhotos(
+            importedMarkers
+          ).then(
+            (
+              restoredMarkers
+            ) => {
+              setMarkers(
+                (prev) => [
+                  ...prev,
+                  ...restoredMarkers,
+                ]
+              );
+            }
+          );
         }
       } catch (error) {
         alert(
@@ -336,6 +637,20 @@ export default function App() {
         </select>
 
         <p>現在：{category}</p>
+
+        <button
+          onClick={() =>
+            setMoveMode(!moveMode)
+          }
+        >
+          {moveMode
+            ? "移動モードON"
+            : "移動モードOFF"}
+        </button>
+
+        <br />
+
+        <br />
       </div>
 
       {/* 地図 */}
@@ -358,6 +673,7 @@ export default function App() {
           markers={markers}
           setMarkers={setMarkers}
           category={category}
+          moveMode={moveMode}
         />
 
         {/* ピン描画 */}
@@ -369,13 +685,47 @@ export default function App() {
               marker.lng,
             ]}
             icon={
-              iconMap[marker.category]
+              iconMap[
+                marker.category
+              ]
             }
+            draggable={moveMode}
+            eventHandlers={{
+              dragend: (e) => {
+                updateMarkerPosition(
+                  index,
+                  e.target.getLatLng()
+                );
+              },
+            }}
           >
             <Popup>
               <strong>
                 {marker.category}
               </strong>
+
+              <br />
+              <br />
+
+              カテゴリ変更
+              <br />
+
+              <select
+                value={marker.category}
+                onChange={(e) =>
+                  updateCategory(
+                    index,
+                    e.target.value
+                  )
+                }
+              >
+                <option>空き家</option>
+                <option>気になる場所</option>
+                <option>良い場所</option>
+              </select>
+
+              <br />
+              <br />
 
               <br />
 
@@ -397,10 +747,11 @@ export default function App() {
                 type="file"
                 accept="image/*"
                 capture="environment"
+                multiple
                 onChange={(e) =>
                   updatePhoto(
                     index,
-                    e.target.files?.[0]
+                    e.target.files
                   )
                 }
               />
@@ -408,27 +759,50 @@ export default function App() {
               <br />
               <br />
 
-              {marker.photos?.[0] && (
+              {marker.photos?.length >
+                0 && (
                 <>
-                  <img
-                    src={marker.photos[0]}
-                    alt="現地写真"
-                    style={{
-                      width: "100%",
-                      borderRadius: "8px",
-                      marginTop: "8px",
-                    }}
-                  />
+                  {marker.photos.map(
+                    (
+                      photo,
+                      photoIndex
+                    ) => (
+                      <div
+                        key={photoIndex}
+                        style={{
+                          marginBottom:
+                            "10px",
+                        }}
+                      >
+                        <img
+                          src={
+                            photo.preview ||
+                            photo.url
+                          }
+                          alt="現地写真"
+                          style={{
+                            width:
+                              "100%",
+                            borderRadius:
+                              "8px",
+                          }}
+                        />
 
-                  <br />
+                        <br />
 
-                  <button
-                    onClick={() =>
-                      removePhoto(index)
-                    }
-                  >
-                    写真削除
-                  </button>
+                        <button
+                          onClick={() =>
+                            removePhoto(
+                              index,
+                              photoIndex
+                            )
+                          }
+                        >
+                          写真削除
+                        </button>
+                      </div>
+                    )
+                  )}
                 </>
               )}
 
