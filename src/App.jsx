@@ -262,9 +262,11 @@ export default function App() {
           photoIndex
         ];
 
-      await deletePhoto(
-        targetPhoto.key
-      );
+      if (targetPhoto?.key) {
+        await deletePhoto(
+          targetPhoto.key
+        );
+      }
 
       updated[
         index
@@ -378,17 +380,24 @@ export default function App() {
                 [];
 
               for (
-                const photo of marker.photos ||
-                []
+                const photo of marker.photos || []
               ) {
+
+                // keyが無い写真はスキップ
+                if (!photo?.key) {
+                  console.warn(
+                    "keyなし写真をスキップ",
+                    photo
+                  );
+                  continue;
+                }
+
                 const file =
                   await getPhoto(
                     photo.key
                   );
 
-                if (
-                  file
-                ) {
+                if (file) {
                   const compressed =
                     await compressImage(
                       file
