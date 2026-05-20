@@ -410,7 +410,17 @@ export default function App() {
               }
 
               return {
-                ...marker,
+                id: marker.id,
+                lat: marker.lat,
+                lng: marker.lng,
+                category:
+                  marker.category,
+                memo:
+                  marker.memo || "",
+
+                // photosは保存しない
+                photos: [],
+
                 exportPhotos:
                   photos,
               };
@@ -488,7 +498,10 @@ export default function App() {
                     if (
                       !marker.exportPhotos
                     ) {
-                      return marker;
+                      return {
+                        ...marker,
+                        photos: [],
+                      };
                     }
 
                     const photoUrls =
@@ -544,7 +557,13 @@ export default function App() {
                     }
 
                     return {
-                      ...marker,
+                      id: marker.id,
+                      lat: marker.lat,
+                      lng: marker.lng,
+                      category:
+                        marker.category,
+                      memo:
+                        marker.memo || "",
                       photos:
                         photoUrls,
                     };
